@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/app_state.dart';
 import '../services/pdf_loader.dart';
@@ -7,47 +8,49 @@ import 'book_page.dart';
 import 'animated_page.dart';
 import 'navigation_controls.dart';
 
-/// A beautiful book flip animation widget for displaying PDFs
-///
-/// Usage:
-/// ```dart
-/// PdfBookViewer(
-///   pdfUrl: 'https://example.com/document.pdf',
-/// )
-/// ```
 class PdfBookViewer extends StatefulWidget {
-  /// The URL of the PDF to display
-  final String pdfUrl;
+  /// Network PDF
+  final String? pdfUrl;
 
-  /// Optional styling for the book viewer
+  /// Asset PDF, ví dụ: assets/sample.pdf
+  final String? assetPath;
+
+  /// Local file path, ví dụ từ file_picker/path_provider
+  final String? filePath;
+
+  /// Raw PDF bytes
+  final Uint8List? pdfBytes;
+
   final PdfBookViewerStyle? style;
-
-  /// Callback when page changes
   final void Function(int currentPage, int totalPages)? onPageChanged;
-
-  /// Callback when an error occurs
   final void Function(String error)? onError;
-
-  /// Whether to show navigation controls
   final bool showNavigationControls;
-
-  /// Custom background color
   final Color? backgroundColor;
 
-  /// Optional proxy URL to bypass CORS restrictions
-  /// Example: 'https://your-proxy.com?url='
+  /// Optional proxy URL to bypass CORS restrictions for network PDFs
   final String? proxyUrl;
 
   const PdfBookViewer({
     Key? key,
-    required this.pdfUrl,
+    this.pdfUrl,
+    this.assetPath,
+    this.filePath,
+    this.pdfBytes,
     this.style,
     this.onPageChanged,
     this.onError,
     this.showNavigationControls = true,
     this.backgroundColor,
     this.proxyUrl,
-  }) : super(key: key);
+  })  : assert(
+          (pdfUrl != null ? 1 : 0) +
+                  (assetPath != null ? 1 : 0) +
+                  (filePath != null ? 1 : 0) +
+                  (pdfBytes != null ? 1 : 0) ==
+              1,
+          'You must provide exactly one PDF source: pdfUrl, assetPath, filePath, or pdfBytes.',
+        ),
+        super(key: key);
 
   @override
   _PdfBookViewerState createState() => _PdfBookViewerState();
@@ -66,14 +69,12 @@ class _PdfBookViewerState extends State<PdfBookViewer>
   void initState() {
     super.initState();
 
-    /// Initialize state management
     appState = AppState();
     appState.addListener(_onPageChanged);
 
     transformationController = TransformationController();
     transformationController.addListener(_onTransformationChanged);
 
-    /// Initialize services
     pdfLoader = PdfLoader(appState, proxyUrl: widget.proxyUrl);
     animationController = BookAnimationController(
       appState: appState,
@@ -85,28 +86,53 @@ class _PdfBookViewerState extends State<PdfBookViewer>
       animationController: animationController,
     );
 
-    /// Load the PDF
     _loadPdfWithErrorHandling();
   }
 
   @override
   void didUpdateWidget(PdfBookViewer oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.pdfUrl != widget.pdfUrl) {
-      /// Defer state updates to avoid setState during build
+
+    final sourceChanged = _didPdfSourceChange(oldWidget, widget);
+
+    final proxyChanged = oldWidget.proxyUrl != widget.proxyUrl;
+
+    if (sourceChanged || proxyChanged) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         try {
           _resetState();
-          await pdfLoader.loadPdf(widget.pdfUrl);
+
+          await _loadPdfSource();
         } catch (e) {
           final errorMsg = 'Failed to load PDF: ${e.toString()}';
+
           appState.errorMessage = errorMsg;
-          if (widget.onError != null) {
-            widget.onError!(errorMsg);
-          }
+
+          widget.onError?.call(errorMsg);
         }
       });
     }
+  }
+
+  bool _didPdfSourceChange(PdfBookViewer oldWidget, PdfBookViewer newWidget) {
+    return oldWidget.pdfUrl != newWidget.pdfUrl ||
+        oldWidget.assetPath != newWidget.assetPath ||
+        oldWidget.filePath != newWidget.filePath ||
+        !_sameBytes(oldWidget.pdfBytes, newWidget.pdfBytes);
+  }
+
+  bool _sameBytes(Uint8List? a, Uint8List? b) {
+    if (identical(a, b)) return true;
+
+    if (a == null || b == null) return a == b;
+
+    if (a.length != b.length) return false;
+
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+
+    return true;
   }
 
   void _resetState() {
@@ -120,18 +146,45 @@ class _PdfBookViewerState extends State<PdfBookViewer>
     appState.errorMessage = null;
   }
 
+  Future<void> _loadPdfSource() async {
+    if (widget.assetPath != null) {
+      await pdfLoader.loadPdfFromAsset(widget.assetPath!);
+
+      return;
+    }
+
+    if (widget.filePath != null) {
+      await pdfLoader.loadPdfFromFile(widget.filePath!);
+
+      return;
+    }
+
+    if (widget.pdfBytes != null) {
+      await pdfLoader.loadPdfFromBytes(widget.pdfBytes!);
+
+      return;
+    }
+
+    if (widget.pdfUrl != null) {
+      await pdfLoader.loadPdfFromUrl(widget.pdfUrl!);
+
+      return;
+    }
+
+    throw Exception('No PDF source provided.');
+  }
+
   Future<void> _loadPdfWithErrorHandling() async {
     try {
       appState.errorMessage = null;
 
-      /// Clear any previous error
-      await pdfLoader.loadPdf(widget.pdfUrl);
+      await _loadPdfSource();
     } catch (e) {
       final errorMsg = 'Failed to load PDF: ${e.toString()}';
+
       appState.errorMessage = errorMsg;
-      if (widget.onError != null) {
-        widget.onError!(errorMsg);
-      }
+
+      widget.onError?.call(errorMsg);
     }
   }
 
