@@ -203,17 +203,19 @@ class PdfLoader {
 
         if (image != null) {
           final newPageImages = List<PdfPageImage>.from(appState.pageImages);
+
           newPageImages.add(image);
 
-          // Trang đầu hiển thị đôi để tạo spread mở đầu
-          if (i == 0 && appState.currentTotalPages != 2) {
-            newPageImages.add(image);
+          // Thêm 1 trang trắng ngay sau trang đầu tiên
+          if (i == 0) {
+            final blankPage = _createBlankPageImageLike(image);
+            newPageImages.add(blankPage);
           }
 
-          // Nếu tổng số trang lẻ thì thêm 1 bản duplicate ở cuối
           if (appState.document!.pagesCount == (i + 1)) {
             if ((i + 1) % 2 != 0) {
-              newPageImages.add(image);
+              final blankPage = _createBlankPageImageLike(image);
+              newPageImages.add(blankPage);
               appState.showLastPage = false;
             }
           }
@@ -253,5 +255,26 @@ class PdfLoader {
 
     appState.currentPage = targetPage;
     appState.currentPageComplete = targetPage;
+  }
+
+  PdfPageImage _createBlankPageImageLike(PdfPageImage source) {
+    final width = source.width!;
+    final height = source.height!;
+
+    final bytes = Uint8List(width * height * 4);
+
+    for (int i = 0; i < bytes.length; i += 4) {
+      bytes[i] = 255; // R
+      bytes[i + 1] = 255; // G
+      bytes[i + 2] = 255; // B
+      bytes[i + 3] = 255; // A
+    }
+
+    return PdfPageImage(
+      pageNumber: -1,
+      width: width,
+      height: height,
+      bytes: bytes,
+    );
   }
 }
