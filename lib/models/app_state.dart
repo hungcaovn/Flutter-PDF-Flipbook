@@ -31,7 +31,7 @@ class AppState extends ChangeNotifier {
 
   /// Getters
   PdfDocument? get document => _document;
-  List<PdfPageImage> get pageImages => _pageImages;
+  List<PdfPageImage?> get pageImages => _pageImages;
   List<int> get alreadyAdded => _alreadyAdded;
   bool get isLoading => _isLoading;
   bool get showLastPage => _showLastPage;
