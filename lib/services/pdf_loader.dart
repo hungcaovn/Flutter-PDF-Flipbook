@@ -18,11 +18,9 @@ class PdfLoader {
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         return response.bodyBytes;
-      } else {
-        throw Exception(
-          'Direct fetch failed with status: ${response.statusCode}',
-        );
       }
+      throw Exception(
+          'Direct fetch failed with status: ${response.statusCode}');
     } catch (e) {
       if (proxyUrl != null && proxyUrl!.isNotEmpty) {
         try {
@@ -30,22 +28,18 @@ class PdfLoader {
           final response = await http.get(Uri.parse(fullProxyUrl));
           if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
             return response.bodyBytes;
-          } else {
-            throw Exception(
-              'Proxy fetch failed with status: ${response.statusCode}',
-            );
           }
+          throw Exception(
+              'Proxy fetch failed with status: ${response.statusCode}');
         } catch (proxyError) {
           throw Exception(
-            'Both direct fetch and proxy fetch failed. '
-            'Direct error: $e, Proxy error: $proxyError',
+            'Both direct fetch and proxy fetch failed. Direct error: $e, Proxy error: $proxyError',
           );
         }
-      } else {
-        throw Exception(
-          'Direct fetch failed and no proxy URL provided. Error: $e',
-        );
       }
+
+      throw Exception(
+          'Direct fetch failed and no proxy URL provided. Error: $e');
     }
   }
 
@@ -68,8 +62,7 @@ class PdfLoader {
     try {
       appState.isLoading = true;
       final byteData = await rootBundle.load(assetPath);
-      final bytes = byteData.buffer.asUint8List();
-      await _openPdfFromBytes(bytes);
+      await _openPdfFromBytes(byteData.buffer.asUint8List());
     } catch (e) {
       appState.isLoading = false;
       throw Exception("Failed to load PDF from asset: $e");
@@ -87,13 +80,11 @@ class PdfLoader {
       }
 
       final file = File(filePath);
-
       if (!await file.exists()) {
         throw Exception('File does not exist: $filePath');
       }
 
-      final bytes = await file.readAsBytes();
-      await _openPdfFromBytes(bytes);
+      await _openPdfFromBytes(await file.readAsBytes());
     } catch (e) {
       appState.isLoading = false;
       throw Exception("Failed to load PDF from file: $e");
@@ -174,13 +165,8 @@ class PdfLoader {
       }
 
       for (int i = 0; i < pagesToLoad; i++) {
-        if (appState.alreadyAdded.any((element) => element == i)) {
-          continue;
-        }
-
-        if (i >= appState.document!.pagesCount) {
-          continue;
-        }
+        if (appState.alreadyAdded.contains(i)) continue;
+        if (i >= appState.document!.pagesCount) continue;
 
         final newAlreadyAdded = List<int>.from(appState.alreadyAdded);
         newAlreadyAdded.add(i);
@@ -197,26 +183,23 @@ class PdfLoader {
         );
 
         if (image != null) {
-          final newPageImages = List<PdfPageImage>.from(appState.pageImages);
+          final newPageImages = List<PdfPageImage?>.from(appState.pageImages);
 
           newPageImages.add(image);
 
           if (i == 0) {
-            // index 1: duplicate page 1 để hiển thị cover bên phải
+            // index 1: duplicate page 1 để cover vẫn nằm bên phải ở màn đầu
             newPageImages.add(image);
 
-            // index 2: placeholder cho trang trắng phía sau cover
-            // Không tạo PdfPageImage giả vì PdfPageImage là abstract.
-            // book_page.dart sẽ render index 2 thành trang trắng.
-            newPageImages.add(image);
+            // index 2: mặt sau cover là trang trắng
+            newPageImages.add(null);
           }
 
-          // Sau khi thêm 1 trang trắng sau cover, tổng số trang hiển thị
-          // sẽ bị lệch parity. Nếu PDF gốc có số trang chẵn thì cần thêm
-          // 1 placeholder trắng ở cuối để spread cuối đủ 2 mặt.
-          if (appState.document!.pagesCount == (i + 1)) {
-            if (appState.document!.pagesCount % 2 == 0) {
-              newPageImages.add(image);
+          if (appState.document!.pagesCount == i + 1) {
+            final visualPageCount = newPageImages.length;
+
+            if (visualPageCount.isOdd) {
+              newPageImages.add(null);
               appState.showLastPage = false;
             }
           }

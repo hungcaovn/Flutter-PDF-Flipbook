@@ -13,24 +13,7 @@ class BookPage extends StatelessWidget {
     required this.finalPageHeight,
   }) : super(key: key);
 
-  bool _isBlankPageIndex(int pageIndex) {
-    // index 2 là trang trắng được chèn phía sau trang đầu tiên.
-    if (pageIndex == 2) return true;
-
-    // Nếu loader thêm placeholder trắng ở cuối thì render index cuối là trắng.
-    if (!appState.showLastPage &&
-        appState.pageImages.isNotEmpty &&
-        pageIndex == appState.pageImages.length - 1) {
-      return true;
-    }
-
-    return false;
-  }
-
-  Widget _buildPageContent({
-    required int pageIndex,
-    required bool hasPage,
-  }) {
+  Widget _buildPage(int pageIndex, bool hasPage) {
     if (!hasPage) {
       return Container(
         color: Colors.grey.shade300,
@@ -43,12 +26,19 @@ class BookPage extends StatelessWidget {
       );
     }
 
-    if (_isBlankPageIndex(pageIndex)) {
-      return Container(color: Colors.white);
+    final image = appState.pageImages[pageIndex];
+
+    if (image == null) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        ),
+      );
     }
 
     return Image.memory(
-      appState.pageImages[pageIndex].bytes,
+      image.bytes,
       fit: BoxFit.fill,
       gaplessPlayback: true,
     );
@@ -78,10 +68,7 @@ class BookPage extends StatelessWidget {
             height: finalPageHeight,
             width: finalPageWidth,
             color: Colors.white,
-            child: _buildPageContent(
-              pageIndex: leftPageIndex,
-              hasPage: hasLeftPage,
-            ),
+            child: _buildPage(leftPageIndex, hasLeftPage),
           ),
         ),
         Center(
@@ -94,7 +81,7 @@ class BookPage extends StatelessWidget {
                   color: Colors.black.withValues(alpha: 0.1),
                   spreadRadius: 0,
                   blurRadius: 15,
-                  offset: Offset(0, 5),
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
@@ -110,10 +97,7 @@ class BookPage extends StatelessWidget {
               height: finalPageHeight,
               width: finalPageWidth,
               color: Colors.white,
-              child: _buildPageContent(
-                pageIndex: rightPageIndex,
-                hasPage: hasRightPage,
-              ),
+              child: _buildPage(rightPageIndex, hasRightPage),
             ),
           ),
         ),

@@ -4,7 +4,7 @@ import 'package:pdfx/pdfx.dart';
 class AppState extends ChangeNotifier {
   /// PDF related state
   PdfDocument? _document;
-  List<PdfPageImage> _pageImages = [];
+  List<PdfPageImage?> _pageImages = [];
   List<int> _alreadyAdded = [];
   bool _isLoading = false;
   bool _showLastPage = true;

@@ -15,6 +15,37 @@ class AnimatedPage extends StatelessWidget {
     required this.finalPageHeight,
   }) : super(key: key);
 
+  Widget _buildPage(int pageIndex, bool hasPage) {
+    if (!hasPage) {
+      return Container(
+        color: Colors.grey.shade300,
+        child: Center(
+          child: Text(
+            'Loading...',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+
+    final image = appState.pageImages[pageIndex];
+
+    if (image == null) {
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: Colors.black.withValues(alpha: 0.04)),
+        ),
+      );
+    }
+
+    return Image.memory(
+      image.bytes,
+      fit: BoxFit.fill,
+      gaplessPlayback: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Align(
@@ -23,20 +54,22 @@ class AnimatedPage extends StatelessWidget {
       child: AnimatedBuilder(
         animation: rotationAnimation,
         builder: (context, child) {
-          double rotationValue = rotationAnimation.value;
-          bool isFront = rotationValue <= 0.5;
+          final rotationValue = rotationAnimation.value;
+          final isFront = rotationValue <= 0.5;
 
-          /// Calculate indices safely
           final frontPageIndex = !appState.isSwipingLeft
               ? appState.currentPageComplete * 2
               : appState.currentPageComplete * 2 + 1;
+
           final backPageIndex = appState.isSwipingLeft
               ? appState.currentPageComplete * 2 + 2
               : appState.currentPage * 2 + 1;
 
-          /// Check if pages exist
           final hasFrontPage = frontPageIndex < appState.pageImages.length;
           final hasBackPage = backPageIndex < appState.pageImages.length;
+
+          final pageIndex = isFront ? frontPageIndex : backPageIndex;
+          final hasPage = isFront ? hasFrontPage : hasBackPage;
 
           return Transform(
             alignment: appState.isSwipingLeft
@@ -44,9 +77,11 @@ class AnimatedPage extends StatelessWidget {
                 : Alignment.centerRight,
             transform: Matrix4.identity()
               ..setEntry(3, 2, 0.0004)
-              ..rotateY(appState.isSwipingLeft
-                  ? rotationValue * 3.14
-                  : -rotationValue * 3.14),
+              ..rotateY(
+                appState.isSwipingLeft
+                    ? rotationValue * 3.14
+                    : -rotationValue * 3.14,
+              ),
             child: Stack(
               children: [
                 Container(
@@ -56,24 +91,7 @@ class AnimatedPage extends StatelessWidget {
                   child: Transform(
                     alignment: Alignment.center,
                     transform: Matrix4.identity()..rotateY(isFront ? 0 : 3.14),
-                    child: (isFront && hasFrontPage) ||
-                            (!isFront && hasBackPage)
-                        ? Image.memory(
-                            isFront
-                                ? appState.pageImages[frontPageIndex].bytes
-                                : appState.pageImages[backPageIndex].bytes,
-                            fit: BoxFit.fill,
-                            gaplessPlayback: true,
-                          )
-                        : Container(
-                            color: Colors.grey.shade300,
-                            child: Center(
-                              child: Text(
-                                'Loading...',
-                                style: TextStyle(color: Colors.grey.shade600),
-                              ),
-                            ),
-                          ),
+                    child: _buildPage(pageIndex, hasPage),
                   ),
                 ),
                 Positioned(
@@ -96,7 +114,7 @@ class AnimatedPage extends StatelessWidget {
                           color: Colors.black.withValues(alpha: 0.1),
                           spreadRadius: 0,
                           blurRadius: 15,
-                          offset: Offset(0, 5),
+                          offset: const Offset(0, 5),
                         ),
                       ],
                     ),
