@@ -13,23 +13,62 @@ class BookPage extends StatelessWidget {
     required this.finalPageHeight,
   }) : super(key: key);
 
+  bool _isBlankPageIndex(int pageIndex) {
+    // index 2 là trang trắng được chèn phía sau trang đầu tiên.
+    if (pageIndex == 2) return true;
+
+    // Nếu loader thêm placeholder trắng ở cuối thì render index cuối là trắng.
+    if (!appState.showLastPage &&
+        appState.pageImages.isNotEmpty &&
+        pageIndex == appState.pageImages.length - 1) {
+      return true;
+    }
+
+    return false;
+  }
+
+  Widget _buildPageContent({
+    required int pageIndex,
+    required bool hasPage,
+  }) {
+    if (!hasPage) {
+      return Container(
+        color: Colors.grey.shade300,
+        child: Center(
+          child: Text(
+            'Loading...',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+        ),
+      );
+    }
+
+    if (_isBlankPageIndex(pageIndex)) {
+      return Container(color: Colors.white);
+    }
+
+    return Image.memory(
+      appState.pageImages[pageIndex].bytes,
+      fit: BoxFit.fill,
+      gaplessPlayback: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    /// Calculate indices safely
     final leftPageIndex = appState.isSwipingLeft
         ? appState.currentPageComplete * 2
         : appState.currentPage * 2;
+
     final rightPageIndex = appState.isSwipingLeft
         ? appState.currentPage * 2 + 1
         : appState.currentPageComplete * 2 + 1;
 
-    /// Check if pages exist
     final hasLeftPage = leftPageIndex < appState.pageImages.length;
     final hasRightPage = rightPageIndex < appState.pageImages.length;
 
     return Stack(
       children: [
-        /// Left page
         Visibility(
           visible: hasLeftPage &&
               !(!appState.isSwipingLeft
@@ -39,25 +78,12 @@ class BookPage extends StatelessWidget {
             height: finalPageHeight,
             width: finalPageWidth,
             color: Colors.white,
-            child: hasLeftPage
-                ? Image.memory(
-                    appState.pageImages[leftPageIndex].bytes,
-                    fit: BoxFit.fill,
-                    gaplessPlayback: true,
-                  )
-                : Container(
-                    color: Colors.grey.shade300,
-                    child: Center(
-                      child: Text(
-                        'Loading...',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                    ),
-                  ),
+            child: _buildPageContent(
+              pageIndex: leftPageIndex,
+              hasPage: hasLeftPage,
+            ),
           ),
         ),
-
-        /// Center shadow
         Center(
           child: Container(
             width: 40,
@@ -74,8 +100,6 @@ class BookPage extends StatelessWidget {
             ),
           ),
         ),
-
-        /// Right page
         Positioned(
           right: 0,
           top: 0,
@@ -86,21 +110,10 @@ class BookPage extends StatelessWidget {
               height: finalPageHeight,
               width: finalPageWidth,
               color: Colors.white,
-              child: hasRightPage
-                  ? Image.memory(
-                      appState.pageImages[rightPageIndex].bytes,
-                      fit: BoxFit.fill,
-                      gaplessPlayback: true,
-                    )
-                  : Container(
-                      color: Colors.grey.shade300,
-                      child: Center(
-                        child: Text(
-                          'Loading...',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ),
-                    ),
+              child: _buildPageContent(
+                pageIndex: rightPageIndex,
+                hasPage: hasRightPage,
+              ),
             ),
           ),
         ),

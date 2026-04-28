@@ -50,14 +50,12 @@ class PdfLoader {
   }
 
   Future<void> loadPdf(String url) async {
-    // Backward compatibility
     await loadPdfFromUrl(url);
   }
 
   Future<void> loadPdfFromUrl(String url) async {
     try {
       appState.isLoading = true;
-
       final bytes = await fetchPdfAsBytes(url);
       await _openPdfFromBytes(bytes);
     } catch (e) {
@@ -69,7 +67,6 @@ class PdfLoader {
   Future<void> loadPdfFromAsset(String assetPath) async {
     try {
       appState.isLoading = true;
-
       final byteData = await rootBundle.load(assetPath);
       final bytes = byteData.buffer.asUint8List();
       await _openPdfFromBytes(bytes);
@@ -146,9 +143,7 @@ class PdfLoader {
   Future<void> _resetDocumentState() async {
     try {
       await appState.document?.close();
-    } catch (_) {
-      // ignore close errors
-    }
+    } catch (_) {}
 
     appState.pageImages = [];
     appState.alreadyAdded = [];
@@ -206,16 +201,22 @@ class PdfLoader {
 
           newPageImages.add(image);
 
-          // Thêm 1 trang trắng ngay sau trang đầu tiên
           if (i == 0) {
-            final blankPage = _createBlankPageImageLike(image);
-            newPageImages.add(blankPage);
+            // index 1: duplicate page 1 để hiển thị cover bên phải
+            newPageImages.add(image);
+
+            // index 2: placeholder cho trang trắng phía sau cover
+            // Không tạo PdfPageImage giả vì PdfPageImage là abstract.
+            // book_page.dart sẽ render index 2 thành trang trắng.
+            newPageImages.add(image);
           }
 
+          // Sau khi thêm 1 trang trắng sau cover, tổng số trang hiển thị
+          // sẽ bị lệch parity. Nếu PDF gốc có số trang chẵn thì cần thêm
+          // 1 placeholder trắng ở cuối để spread cuối đủ 2 mặt.
           if (appState.document!.pagesCount == (i + 1)) {
-            if ((i + 1) % 2 != 0) {
-              final blankPage = _createBlankPageImageLike(image);
-              newPageImages.add(blankPage);
+            if (appState.document!.pagesCount % 2 == 0) {
+              newPageImages.add(image);
               appState.showLastPage = false;
             }
           }
@@ -246,7 +247,7 @@ class PdfLoader {
 
     pageNumber++;
 
-    int targetPage = (pageNumber - 1) ~/ 2;
+    final targetPage = (pageNumber - 1) ~/ 2;
 
     appState.pageImages = [];
     appState.alreadyAdded = [];
@@ -255,26 +256,5 @@ class PdfLoader {
 
     appState.currentPage = targetPage;
     appState.currentPageComplete = targetPage;
-  }
-
-  PdfPageImage _createBlankPageImageLike(PdfPageImage source) {
-    final width = source.width!;
-    final height = source.height!;
-
-    final bytes = Uint8List(width * height * 4);
-
-    for (int i = 0; i < bytes.length; i += 4) {
-      bytes[i] = 255; // R
-      bytes[i + 1] = 255; // G
-      bytes[i + 2] = 255; // B
-      bytes[i + 3] = 255; // A
-    }
-
-    return PdfPageImage(
-      pageNumber: -1,
-      width: width,
-      height: height,
-      bytes: bytes,
-    );
   }
 }
