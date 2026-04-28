@@ -70,7 +70,7 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  set pageImages(List<PdfPageImage> value) {
+  set pageImages(List<PdfPageImage?> value) {
     _pageImages = value;
     notifyListeners();
   }

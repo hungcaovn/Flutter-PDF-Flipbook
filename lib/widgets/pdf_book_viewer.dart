@@ -283,10 +283,14 @@ class _PdfBookViewerState extends State<PdfBookViewer>
                               final screenHeight = constraints.maxHeight;
 
                               /// Calculate proper aspect ratio for PDF pages
-                              final pageAspectRatio = appState
-                                      .pageImages.first.width!
-                                      .toDouble() /
-                                  appState.pageImages.first.height!.toDouble();
+                              final firstRealPage =
+                                  appState.pageImages.firstWhere(
+                                (page) => page != null,
+                              );
+
+                              final pageAspectRatio =
+                                  firstRealPage!.width!.toDouble() /
+                                      firstRealPage.height!.toDouble();
 
                               /// Calculate maximum height available (leave some padding)
                               final maxHeight = screenHeight -
