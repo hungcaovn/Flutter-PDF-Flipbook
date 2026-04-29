@@ -15,22 +15,30 @@ class PdfLoader {
 
   Future<Uint8List> fetchPdfAsBytes(String url) async {
     try {
-      final response = await http.get(Uri.parse(url));
+      final uri = Uri.base.resolve(url);
+
+      final response = await http.get(uri);
+
       if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
         return response.bodyBytes;
       }
+
       throw Exception(
-          'Direct fetch failed with status: ${response.statusCode}');
+        'Direct fetch failed with status: ${response.statusCode}, body: ${response.body}',
+      );
     } catch (e) {
       if (proxyUrl != null && proxyUrl!.isNotEmpty) {
         try {
           final fullProxyUrl = '$proxyUrl${Uri.encodeComponent(url)}';
           final response = await http.get(Uri.parse(fullProxyUrl));
+
           if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
             return response.bodyBytes;
           }
+
           throw Exception(
-              'Proxy fetch failed with status: ${response.statusCode}');
+            'Proxy fetch failed with status: ${response.statusCode}, body: ${response.body}',
+          );
         } catch (proxyError) {
           throw Exception(
             'Both direct fetch and proxy fetch failed. Direct error: $e, Proxy error: $proxyError',
@@ -39,7 +47,8 @@ class PdfLoader {
       }
 
       throw Exception(
-          'Direct fetch failed and no proxy URL provided. Error: $e');
+        'Direct fetch failed and no proxy URL provided. Error: $e',
+      );
     }
   }
 
