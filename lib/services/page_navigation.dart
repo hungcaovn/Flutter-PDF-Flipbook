@@ -11,6 +11,14 @@ class PageNavigation {
     required this.animationController,
   });
 
+  bool get isAtLastSpread {
+    if (appState.pageImages.isEmpty) return true;
+
+    final lastSpreadIndex = ((appState.pageImages.length - 1) / 2).floor();
+
+    return appState.currentPageComplete >= lastSpreadIndex;
+  }
+
   /// Handles horizontal drag gestures for page navigation
   void handleHorizontalDrag(DragUpdateDetails details) {
     /// Only allow navigation when not zoomed and no swipe in progress
@@ -49,7 +57,7 @@ class PageNavigation {
   /// Checks if navigation is possible in the given direction
   bool canNavigate(bool swipeLeft) {
     if (appState.document == null) return false;
-    final totalPages = appState.document!.pagesCount;
+    final totalPages = appState.document!.pagesCount + 1;
     final currentPageIndex = appState.currentPage * 2;
 
     if (swipeLeft) {
