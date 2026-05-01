@@ -20,54 +20,57 @@ class BookAnimationController {
 
     _rotationAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-          parent: _animationController, curve: Curves.fastOutSlowIn),
+        parent: _animationController,
+        curve: Curves.fastOutSlowIn,
+      ),
     );
   }
 
   AnimationController get animationController => _animationController;
   Animation<double> get rotationAnimation => _rotationAnimation;
 
-  /// Handles page flipping animation with smart interruption for fast navigation
-  Future<void> triggerFlip(bool swipeLeft) async {
-    /// Check if we can navigate in the requested direction
-    if (!canNavigate(swipeLeft)) return;
+  int get lastSpreadIndex {
+    if (appState.pageImages.isEmpty) return 0;
+    return ((appState.pageImages.length - 1) / 2).floor();
+  }
 
-    /// Handle animation interruption if one is currently playing
+  Future<void> triggerFlip(bool swipeLeft) async {
+    if (!canNavigate(swipeLeft)) {
+      appState.isSwipeInProgress = false;
+      return;
+    }
+
     if (_animationController.isAnimating) {
       await _interruptAndSkipToNext(swipeLeft);
       return;
     }
 
-    /// Check if animation is ready (not in fast navigation mode)
     if (!appState.isAnimationReady) {
+      appState.isSwipeInProgress = false;
       return;
     }
 
-    /// Start the flip animation
     await _performFlipAnimation(swipeLeft);
   }
 
-  /// Interrupts current animation and immediately goes to next page for fast navigation
   Future<void> _interruptAndSkipToNext(bool swipeLeft) async {
-    /// Stop current animation
     _animationController.stop();
     _animationController.reset();
 
-    /// Mark animation as not ready during fast navigation
     appState.isAnimationReady = false;
 
-    /// Show fast navigation indicator
+    final nextPage = _nextPageIndex(swipeLeft);
+
     appState.updateMultiple(
-      currentPageComplete: appState.currentPage,
+      currentPage: nextPage,
+      currentPageComplete: nextPage,
       animationComplete: true,
       animationEnd: true,
     );
 
-    /// Load new pages immediately
     await pdfLoader.loadPages(appState.currentPage, null);
 
-    /// Hide fast navigation indicator and ensure animation state is ready
-    Future.delayed(Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 300), () {
       appState.updateMultiple(
         animationEnd: true,
         animationComplete: false,
@@ -75,44 +78,40 @@ class BookAnimationController {
         isSwipeInProgress: false,
       );
     });
+  }
 
-    await _performFlipAnimation(swipeLeft);
+  int _nextPageIndex(bool swipeLeft) {
+    final next = appState.currentPage + (swipeLeft ? 1 : -1);
+
+    if (next < 0) return 0;
+    if (next > lastSpreadIndex) return lastSpreadIndex;
+
+    return next;
   }
 
   bool canNavigate(bool swipeLeft) {
     if (appState.document == null) return false;
-    final totalPages = appState.document!.pagesCount;
-    final currentPageIndex = appState.currentPage * 2;
+    if (appState.pageImages.isEmpty) return false;
 
     if (swipeLeft) {
-      if (totalPages % 2 == 0) {
-        /// Even number of pages: allow if currentPageIndex < totalPages - 2 or at the last spread
-        return currentPageIndex < (totalPages - 2) ||
-            currentPageIndex == (totalPages - 2);
-      } else {
-        /// Odd number of pages: allow if currentPageIndex < totalPages - 1
-        return currentPageIndex < (totalPages - 1);
-      }
-    } else {
-      /// Can't go backward if at first page
-      return appState.currentPage > 0;
+      return appState.currentPageComplete < lastSpreadIndex;
     }
+
+    return appState.currentPageComplete > 0;
   }
 
-  /// Performs the actual flip animation
   Future<void> _performFlipAnimation(bool swipeLeft) async {
-    /// Update animation state
+    final nextPage = _nextPageIndex(swipeLeft);
+
     appState.updateMultiple(
       animationEnd: false,
       isSwipingLeft: swipeLeft,
-      currentPage: appState.currentPage + (swipeLeft ? 1 : -1),
+      currentPage: nextPage,
     );
 
-    /// Run the animation
     await _animationController.forward();
 
-    /// Load new pages and complete the animation
-    pdfLoader.loadPages(appState.currentPage, null);
+    await pdfLoader.loadPages(appState.currentPage, null);
 
     appState.updateMultiple(
       animationComplete: true,
@@ -121,7 +120,6 @@ class BookAnimationController {
       isSwipeInProgress: false,
     );
 
-    /// Reset for next animation
     _animationController.reset();
   }
 
