@@ -11,32 +11,35 @@ class PageNavigation {
     required this.animationController,
   });
 
+  int get lastSpreadIndex {
+    if (appState.pageImages.isEmpty) return 0;
+    return ((appState.pageImages.length - 1) / 2).floor();
+  }
+
   bool get isAtLastSpread {
-    if (appState.pageImages.isEmpty) return true;
-
-    final lastSpreadIndex = ((appState.pageImages.length - 1) / 2).floor();
-
     return appState.currentPageComplete >= lastSpreadIndex;
   }
 
-  /// Handles horizontal drag gestures for page navigation
+  bool get isAtFirstSpread {
+    return appState.currentPageComplete <= 0;
+  }
+
   void handleHorizontalDrag(DragUpdateDetails details) {
-    /// Only allow navigation when not zoomed and no swipe in progress
     if (appState.isZoomed || appState.isSwipeInProgress) return;
 
-    /// Determine swipe direction based on delta
     if (details.delta.dx < 0) {
-      /// Swipe left - go to next page
+      if (!canNavigate(true)) return;
+
       appState.isSwipeInProgress = true;
       animationController.triggerFlip(true);
     } else if (details.delta.dx > 0) {
-      /// Swipe right - go to previous page
+      if (!canNavigate(false)) return;
+
       appState.isSwipeInProgress = true;
       animationController.triggerFlip(false);
     }
   }
 
-  /// Navigates to the previous page with error handling
   void navigateToPreviousPage(BuildContext context) {
     if (canNavigate(false)) {
       animationController.triggerFlip(false);
@@ -45,7 +48,6 @@ class PageNavigation {
     }
   }
 
-  /// Navigates to the next page with error handling
   void navigateToNextPage(BuildContext context) {
     if (canNavigate(true)) {
       animationController.triggerFlip(true);
@@ -54,34 +56,23 @@ class PageNavigation {
     }
   }
 
-  /// Checks if navigation is possible in the given direction
   bool canNavigate(bool swipeLeft) {
     if (appState.document == null) return false;
-    final totalPages = appState.document!.pagesCount + 1;
-    final currentPageIndex = appState.currentPage * 2;
+    if (appState.pageImages.isEmpty) return false;
 
     if (swipeLeft) {
-      if (totalPages % 2 == 0) {
-        /// Even number of pages: allow if currentPageIndex < totalPages - 2 or at the last spread
-        return currentPageIndex < (totalPages - 2) ||
-            currentPageIndex == (totalPages - 2);
-      } else {
-        /// Odd number of pages: allow if currentPageIndex < totalPages - 1
-        return currentPageIndex < (totalPages - 1);
-      }
-    } else {
-      /// Can't go backward if at first page
-      return appState.currentPage > 0;
+      return appState.currentPageComplete < lastSpreadIndex;
     }
+
+    return appState.currentPageComplete > 0;
   }
 
-  /// Shows navigation error message
   void _showNavigationError(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
-        duration: Duration(seconds: 2),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
