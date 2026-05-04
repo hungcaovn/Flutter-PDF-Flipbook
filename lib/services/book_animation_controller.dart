@@ -111,16 +111,17 @@ class BookAnimationController {
 
     await _animationController.forward();
 
-    await pdfLoader.loadPages(appState.currentPage, null);
+    _animationController.reset();
 
     appState.updateMultiple(
+      currentPage: nextPage,
+      currentPageComplete: nextPage,
       animationComplete: true,
-      currentPageComplete: appState.currentPage,
       animationEnd: true,
       isSwipeInProgress: false,
     );
 
-    _animationController.reset();
+    await pdfLoader.loadPages(nextPage, null);
   }
 
   void dispose() {
